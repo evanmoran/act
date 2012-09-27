@@ -139,28 +139,32 @@ class Task
     @duration = options.duration || 1
     @started = options.started || ->
     @completed = options.completed || ->
+    @startTime = 0
+    @_elapsed = 0
 
-  # Smooth ticks for better simulation
-  tick: (dt) ->
+  update: (time) ->
     # Start if we need to
-    if not @_state
-      @_state = totalElapsed: 0
-      @_start()
-    # Check that we've not already completed
-    if @_state.totalElapsed >= @duration
-      return# Truncate total elapsed time to our duration
-    lastElapsed = @_state.totalElapsed
-    shouldComplete = (lastElapsed + dt >= @duration)
-    @_state.totalElapsed += dt
-    if shouldComplete
-      @_state.totalElapsed = @duration
+    elapsed = time - @startTime
+    if (@_elapsed <= 0) and (elapsed <= 0)
+      return     # Haven't started yet
+    if (@_elapsed <= 0) and (elapsed > 0)
+      @_start()  # Forwards over start point
+    else if (@_elapsed >= @duration) and (elapsed >= @duration)
+      return     # Already completed
 
+    if (elapsed < @startTime)
+      elapsed = @startTime    # Clamp elapsed at start time
+    if (elapsed > @duration)
+      elapsed = @duration     # Clamp elapsed at end time
+
+    # Update the children
     for k, v of @final
-      @obj[k] = _interp @initial[k], v, (@_state.totalElapsed / @duration)
+      @obj[k] = _interp @initial[k], v, (elapsed / @duration)
 
-    # Complete if we have reached our duration
-    if shouldComplete
+    if (elapsed >= @duration)
       @_complete()
+
+    @_elapsed = elapsed
 
   _start: ->
     @initial = {}
@@ -188,35 +192,44 @@ _final = (initial, op, value) ->
   else if op == '+=' or op =='+'
     return initial + value
 
-_sumDurations = (tasks) -> _.reduce tasks, ((acc,task) -> acc += task.duration), 0
+_maxEndTime = (tasks) -> _.reduce tasks, ((acc,task) -> Math.max acc, (task.startTime + task.duration)), 0
 
 # Transaction
 # ---------------------------------------------------------------------
 class Transaction
   constructor: (fields) ->
+    @_serial = fields.serial
     @_rate = fields.rate
     @_tasks = fields.tasks
-    @duration = (_sumDurations @_tasks) / @_rate
+    @_reverseTasks = (@_tasks.slice 0).reverse()
+    @_elapsed = 0
+    @duration = (_maxEndTime @_tasks) / @_rate
+    @startTime = 0
 
-  tick: (dt) ->
+  update: (time) ->
     # Start if we need to
-    if not @_state
-      @_state = totalElapsed: 0
-      @_start()
-    # Check that we've not already completed
-    if @_state.totalElapsed >= @duration
-      return# Truncate total elapsed time to our duration
-    lastElapsed = @_state.totalElapsed
-    shouldComplete = (lastElapsed + dt >= @duration)
-    if shouldComplete
-      dt = @duration - lastElapsed
-    @_state.totalElapsed += dt
-    # Tick _tasks
+    elapsed = time - @startTime
+    if (@_elapsed <= 0) and (elapsed <= 0)
+      return     # Haven't started yet
+    if (@_elapsed <= 0) and (elapsed > 0)
+      @_start()  # Forwards over start point
+    else if (@_elapsed >= @duration) and (elapsed >= @duration)
+      return     # Already completed
+
+    if (elapsed < 0)
+      elapsed = 0             # Clamp elapsed at start time
+    if (elapsed > @duration)
+      elapsed = @duration     # Clamp elapsed at end time
+
+    # Update the children
+    tasks = if elapsed >= @_elapsed then @_tasks else @_reverseTasks
     for task in @_tasks
-      task.tick (dt * @_rate)
-    # Complete if we have reached our duration
-    if shouldComplete
+      task.update (elapsed * @_rate)
+
+    if (elapsed >= @duration)
       @_complete()
+
+    @_elapsed = elapsed
 
   # Start calcuates duration and sets up everything
   _start: ->
@@ -232,14 +245,21 @@ class TransactionBuilder
     @rate     = fields.rate || 1
     @started  = fields.started || ->
     @complete = fields.complete || ->
+    @serial   = fields.serial || false
     @_tasks = []
   addTask: (task) ->
     @_tasks.push task
   transaction: ->
+    if @serial
+      t = 0
+      for task in @_tasks
+        task.startTime = t
+        t += task.duration
     new Transaction
       rate: @rate
       started: @started
       complete: @complete
+      serial: @serial
       tasks: @_tasks
 
 
@@ -250,13 +270,16 @@ class Scheduler
   constructor: (options = {}) ->
     @_tasks = []
     @rate = options.rate || 1
+    @_elapsed = 0
 
   tick: (dt) ->
+    @_elapsed += dt * @rate
     for task in @_tasks
-      task.tick (dt * @rate)
+      task.update @_elapsed
 
   # Add
   addTask: (task) ->
+    task.startTime = @_elapsed
     @_tasks.push task
 
   @rate = 1.0

@@ -114,20 +114,27 @@ describe 'act.transaction', ->
     act.fastForward(1)
     point.x.should.equal 1
 
+  it 'serial transaction', ->
+    point = x: 0, y: 0
+    act.begin(serial: true)
+    act point, x: 1
+    act point, y: 2
+    act.commit()
 
-  # it 'value transaction (with rate)', ->
-  #   point = x:0, y:0
-  #   act.begin(rate:2)
-  #     act point, x: 1, y:2
-  #   act.commit()
+    act.fastForward(0)
+    point.x.should.equal 0
+    point.y.should.equal 0
 
+    act.fastForward(1)
+    point.x.should.equal 1
+    point.y.should.equal 0
 
-
+    act.fastForward(2)
+    point.x.should.equal 1
+    point.y.should.equal 2
 
   # it 'rotation transaction', ->
   #   region = x:0, y:0, width:10, height:10, theta: Math.PI/2
-
-
   #   act.step() # high level step
   #   act.play()
   #   act.stop()
