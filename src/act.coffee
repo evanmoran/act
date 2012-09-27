@@ -16,25 +16,24 @@ actGenerator = ->
 
   # act.function
   # ---------------------------------------------------------------------
-  act = (obj, key, op, value) ->
+  act = (obj, dest, options) ->
     destination = {}
-    if _.isString(key)
-      if value?
-        destination[key] = op: op, value: value
+    for k, v of dest
+      if _.isObject v
+        ops = _.keys v
+        throw "act: expected only one operator (#{ops})" unless ops.length == 1
+        destination[k] = op: ops[0], value: v[ops[0]]
       else
-        destination[key] = op: '=', value: op
-    else
-      for k, v of key
-        if _.isObject v
-          ops = _.keys v
-          throw "act: expected only one operator (#{ops})" unless ops.length == 1
-          destination[k] = op: ops[0], value: v[ops[0]]
-        else
-          destination[k] = op: '=', value: v
+        destination[k] = op: '=', value: v
 
     scheduler = act._scheduler
-    task = new Task obj, destination
+    task = new Task obj, destination, options
     scheduler.addTask task
+
+  # act.Easing
+  # ---------------------------------------------------------------------
+  for k, v of Ease
+    act[k] = v
 
   # act.clone
   # ---------------------------------------------------------------------
@@ -139,6 +138,7 @@ class Task
     @duration = options.duration || 1
     @started = options.started || ->
     @completed = options.completed || ->
+    @_easing = options.easing || EaseLinear
     @startTime = 0
     @_elapsed = 0
 
@@ -158,8 +158,9 @@ class Task
       elapsed = @duration     # Clamp elapsed at end time
 
     # Update the children
+    eased = @_easing (elapsed / @duration)
     for k, v of @final
-      @obj[k] = _interp @initial[k], v, (elapsed / @duration)
+      @obj[k] = _interp @initial[k], v, eased
 
     if (elapsed >= @duration)
       @_complete()
@@ -194,12 +195,29 @@ _final = (initial, op, value) ->
 
 _maxEndTime = (tasks) -> _.reduce tasks, ((acc,task) -> Math.max acc, (task.startTime + task.duration)), 0
 
+# Easing
+# ---------------------------------------------------------------------
+
+Ease = {}
+Ease.EaseLinear =  EaseLinear  = (v) -> v
+Ease.EaseIn =      EaseIn      = (v) -> v * v * v
+Ease.EaseOut =     EaseOut     = (v) -> 1.0 - EaseIn(1.0 - v)
+Ease.EaseInOut =   EaseInOut   = (v) -> if v < 0.5 then EaseIn(v * 2) / 2 else EaseOut(v * 2 - 1.0) / 2 + 0.5
+
+
+console.log "EaseInOut(0): ", EaseInOut(0)
+console.log "EaseInOut(0.25): ", EaseInOut(0.25)
+console.log "EaseInOut(0.5): ", EaseInOut(0.5)
+console.log "EaseInOut(0.75): ", EaseInOut(0.75)
+console.log "EaseInOut(1): ", EaseInOut(1)
+
 # Transaction
 # ---------------------------------------------------------------------
 class Transaction
   constructor: (fields) ->
     @_serial = fields.serial
     @_rate = fields.rate
+    @_easing = fields.easing
     @_tasks = fields.tasks
     @_reverseTasks = (@_tasks.slice 0).reverse()
     @_elapsed = 0
@@ -223,8 +241,9 @@ class Transaction
 
     # Update the children
     tasks = if elapsed >= @_elapsed then @_tasks else @_reverseTasks
+    eased = @_easing (elapsed / @duration) * @duration * @_rate
     for task in @_tasks
-      task.update (elapsed * @_rate)
+      task.update eased
 
     if (elapsed >= @duration)
       @_complete()
@@ -246,6 +265,7 @@ class TransactionBuilder
     @started  = fields.started || ->
     @complete = fields.complete || ->
     @serial   = fields.serial || false
+    @easing   = fields.easing || EaseLinear
     @_tasks = []
   addTask: (task) ->
     @_tasks.push task
@@ -260,6 +280,7 @@ class TransactionBuilder
       started: @started
       complete: @complete
       serial: @serial
+      easing: @easing
       tasks: @_tasks
 
 
