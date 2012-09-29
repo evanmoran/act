@@ -114,8 +114,29 @@ describe 'act.transaction', ->
     act.fastForward(1)
     point.x.should.equal 1
 
-
   it 'serial transaction', ->
+    point = x: 0, y: 0
+    act.begin(serial: true)
+    act point, x: 1
+    act point, x: 2
+    act.commit()
+
+    act.fastForward(0)
+    point.x.should.equal 0
+
+    act.fastForward(0.5)
+    point.x.should.equal 0.5
+
+    act.fastForward(0.5)
+    point.x.should.equal 1
+
+    act.fastForward(0.5)
+    point.x.should.equal 1.5
+
+    act.fastForward(0.5)
+    point.x.should.equal 2
+
+  it 'serial transaction (multiple properties)', ->
     point = x: 0, y: 0
     act.begin(serial: true)
     act point, x: 1
@@ -134,7 +155,7 @@ describe 'act.transaction', ->
     point.x.should.equal 1
     point.y.should.equal 2
 
-  it 'parallel transaction with easing (EaseIn)', ->
+  it 'parallel (EaseIn)', ->
 
     point = x: 0
     act.begin(easing: act.EaseIn)
@@ -150,7 +171,7 @@ describe 'act.transaction', ->
     act.fastForward(0.5)
     point.x.should.equal 1
 
-  it 'parallel transaction with easing (EaseOut)', ->
+  it 'parallel (EaseOut)', ->
 
     point = x: 0
     act.begin(easing: act.EaseOut)
@@ -166,7 +187,7 @@ describe 'act.transaction', ->
     act.fastForward(0.5)
     point.x.should.equal 1
 
-  it 'parallel transaction with easing (EaseInOut)', ->
+  it 'parallel (EaseInOut)', ->
 
     point = x: 0
     act.begin(easing: act.EaseInOut)
@@ -189,7 +210,75 @@ describe 'act.transaction', ->
     point.x.should.equal 1
 
 
-  # it 'rotation transaction', ->
+  it 'task with duration', ->
+    point = x: 0
+    act.begin()
+    act point, x: 1, {duration: 2}
+    act.commit()
+
+    act.fastForward(0)
+    point.x.should.equal 0
+
+    act.fastForward(0.5)
+    point.x.should.equal 0.25
+
+    act.fastForward(0.5)
+    point.x.should.equal 0.5
+
+    act.fastForward(0.5)
+    point.x.should.equal 0.75
+
+    act.fastForward(0.5)
+    point.x.should.equal 1
+
+
+  it 'task with duration (serial, EaseInOut)', ->
+    point = x: 0
+    act.begin(serial: true)
+    act point, x: 1, {duration: 2, easing: act.EaseInOut}
+    act point, x: 2, {duration: 2, easing: act.EaseInOut}
+    act.commit()
+
+    act.fastForward(0)
+    point.x.should.equal 0
+
+    act.fastForward(0.5)
+    point.x.should.be.within(0.01, 0.24)
+
+    act.fastForward(0.5)
+    point.x.should.equal 0.5
+
+    act.fastForward(0.5)
+    point.x.should.be.within(0.76, 0.99)
+
+    act.fastForward(0.5)
+    point.x.should.equal 1
+
+    act.fastForward(0.5)
+    point.x.should.be.within(1.01, 1.25)
+
+    act.fastForward(0.5)
+    point.x.should.equal 1.5
+
+    act.fastForward(0.5)
+    point.x.should.be.within(1.76, 1.99)
+
+    act.fastForward(0.5)
+    point.x.should.equal 2
+
+  it 'setTimeout starts by default', (done) ->
+    point = x: 0
+    act point, x: 1, {duration: 0.015}
+    setTimeout (->
+      point.x.should.equal 1
+      done()
+    ), 0.02 * 1000
+
+  it 'on render called every tick', (done) ->
+    act.on 'render', ->
+      done()
+
+  it 'rotation'
   #   region = x:0, y:0, width:10, height:10, theta: Math.PI/2
   #   act.step() # high level step
   #   act.play()

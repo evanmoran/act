@@ -8,6 +8,7 @@
 # #### act
 #
 
+_ = require 'underscore'
 
 # act.function
 # ---------------------------------------------------------------------
@@ -16,7 +17,7 @@ actGenerator = ->
 
   # act.function
   # ---------------------------------------------------------------------
-  act = (obj, dest, options) ->
+  act = (obj, dest, options = {}) ->
     destination = {}
     for k, v of dest
       if _.isObject v
@@ -30,10 +31,16 @@ actGenerator = ->
     task = new Task obj, destination, options
     scheduler.addTask task
 
-  # act.Easing
+  # act.EaseLinear, etc.
   # ---------------------------------------------------------------------
+
   for k, v of Ease
     act[k] = v
+
+  # act.on, act.off, act.trigger
+  # ---------------------------------------------------------------------
+
+  _extendEventFunctions act
 
   # act.clone
   # ---------------------------------------------------------------------
@@ -66,19 +73,20 @@ actGenerator = ->
   # ---------------------------------------------------------------------
 
   act.play = ->
-    if not @_playState
+    if not act._playState
       # Store reference to state to indentity specific start has been stopped
-      @_playState = state = lastTick: _getTime()
+      act._playState = state = lastTick: _getTime()
       ticker = ->
-        if @_playState == state
+        if act._playState == state
+          _setTimeout act.tickInterval, ticker
           timeCurrent = _getTime()
           timeElapsed = timeCurrent - state.lastTick
           act._tick timeElapsed * act.rate
           state.lastTick = timeCurrent
+          act.trigger 'render'
           # Continue tick
-          setTimeout ticker, act.tickInterval * 1000
       # Start tick
-      setTimeout ticker, act.tickInterval * 1000
+      _setTimeout act.tickInterval, ticker
 
   # act._tick
   # ---------------------------------------------------------------------
@@ -97,7 +105,7 @@ actGenerator = ->
   # ---------------------------------------------------------------------
 
   act.stop = ->
-    @_playState = null
+    act._playState = null
 
   # act.begin
   # ---------------------------------------------------------------------
@@ -127,7 +135,7 @@ actGenerator = ->
   # ---------------------------------------------------------------------
   # act root scheduler
   act._rootScheduler = new Scheduler()
-
+  act.play()
   return act
 
 
@@ -152,8 +160,8 @@ class Task
     else if (@_elapsed >= @duration) and (elapsed >= @duration)
       return     # Already completed
 
-    if (elapsed < @startTime)
-      elapsed = @startTime    # Clamp elapsed at start time
+    if (elapsed < 0)
+      elapsed = 0    # Clamp elapsed at start time
     if (elapsed > @duration)
       elapsed = @duration     # Clamp elapsed at end time
 
@@ -202,14 +210,22 @@ Ease = {}
 Ease.EaseLinear =  EaseLinear  = (v) -> v
 Ease.EaseIn =      EaseIn      = (v) -> v * v * v
 Ease.EaseOut =     EaseOut     = (v) -> 1.0 - EaseIn(1.0 - v)
+Ease.EaseIn2 =      EaseIn2     = (v) -> v * v
+Ease.EaseOut2 =     EaseOut2    = (v) -> 1.0 - EaseIn(1.0 - v)
 Ease.EaseInOut =   EaseInOut   = (v) -> if v < 0.5 then EaseIn(v * 2) / 2 else EaseOut(v * 2 - 1.0) / 2 + 0.5
-
-
-console.log "EaseInOut(0): ", EaseInOut(0)
-console.log "EaseInOut(0.25): ", EaseInOut(0.25)
-console.log "EaseInOut(0.5): ", EaseInOut(0.5)
-console.log "EaseInOut(0.75): ", EaseInOut(0.75)
-console.log "EaseInOut(1): ", EaseInOut(1)
+Ease.EaseInOut2 =   EaseInOut2   = (v) -> (3 * v * v) - 2 * v * v * v
+Ease.EaseOutBounce =   EaseOutBounce  = (v) ->
+  if (v < 1 / 2.75)
+    7.5625 * v * v
+  else if (v < 2 / 2.75)
+    v -= 1.5 / 2.75
+    7.5625 * v * v + 0.75
+  else if (v < 2.5 / 2.75)
+    v -= 2.25 / 2.75
+    7.5625 * v * v + 0.9375
+  else
+    v -= 2.625 / 2.75
+    7.5625 * v * v + 0.984375
 
 # Transaction
 # ---------------------------------------------------------------------
@@ -241,7 +257,7 @@ class Transaction
 
     # Update the children
     tasks = if elapsed >= @_elapsed then @_tasks else @_reverseTasks
-    eased = @_easing (elapsed / @duration) * @duration * @_rate
+    eased = (@_easing elapsed / @duration) * @duration * @_rate
     for task in @_tasks
       task.update eased
 
@@ -309,19 +325,26 @@ class Scheduler
 # ---------------------------------------------------------------------
 # Abstract setTimeout to
 
+_requestAnimFrame = ->
+  if window?
+    window.requestAnimationFrame       ||
+    window.webkitRequestAnimationFrame ||
+    window.mozRequestAnimationFrame    ||
+    window.oRequestAnimationFrame      ||
+    window.msRequestAnimationFrame
+
 _setTimeout = (timeSeconds, fn) ->
+  if requestAnimFrame = _requestAnimFrame()
+    requestAnimFrame fn
+  else
     setTimeout fn, timeSeconds * 1000
-
-_getTime = ->
-  (new Date).getTime()
-
 
 # _getTime
 # ---------------------------------------------------------------------
 # Get current time
 
 _getTime = ->
-  (new Date).getTime()
+  (new Date).getTime() * 0.001
 
 
 # _smoothTicks
@@ -348,7 +371,32 @@ Array.prototype.remove = (from, to) ->
   @length = if from < 0 then this.length + from else from
   @push.apply this, rest
 
+# act
+# ---------------------------------------------------------------------
+_extendEventFunctions = (obj) ->
+  throw 'object already has event functions' if obj.on? or obj.off? or obj.trigger?
+  eventCallbacks = {}
 
+  obj.on = (eventName, cb) ->
+    throw 'cb is not a function' unless _.isFunction cb
+    # Create event if necessary
+    cbs = if eventCallbacks[eventName] then eventCallbacks[eventName] else []
+    eventCallbacks[eventName] = cbs
+#    cbs = eventCallbacks[eventName] = (eventCallbacks[eventName] || [])
+    cbs.push cb
+    ->
+      obj.off eventName, cb
+
+  obj.off = (eventName, cb) ->
+    if not cb
+      delete eventCallbacks[eventName]
+    else if cbs = eventCallbacks[eventName]
+      cbs.remove(ix) if (ix = cbs.indexOf(cb) ) != -1
+
+  obj.trigger = (eventName) ->
+    if cbs = eventCallbacks[eventName]
+      for cb in cbs
+        cb(obj, _.toArray(arguments).slice(1)...)
 
 # act
 # ---------------------------------------------------------------------
@@ -357,8 +405,10 @@ act = actGenerator()
 
 # Version
 # ---------------------------------------------------------------------
-act.version = '0.0.1'
+act.version = '0.0.2'
 
 # Export
 # ---------------------------------------------------------------------
 module.exports = act
+
+
