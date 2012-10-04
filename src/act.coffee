@@ -236,6 +236,8 @@ class Transaction
     @_easing = fields.easing
     @_tasks = fields.tasks
     @_reverseTasks = (@_tasks.slice 0).reverse()
+    @_started = fields.started
+    @_completed = fields.completed
     @_elapsed = 0
     @duration = (_maxEndTime @_tasks) / @_rate
     @startTime = 0
@@ -268,21 +270,21 @@ class Transaction
 
   # Start calcuates duration and sets up everything
   _start: ->
-    @started?()
+    @_started?()
   _complete: ->
-    @completed?()
+    @_completed?()
 
 # TransactionBuilder
 # ---------------------------------------------------------------------
 
 class TransactionBuilder
   constructor: (fields = {}) ->
-    @rate     = fields.rate || 1
-    @started  = fields.started || ->
-    @complete = fields.complete || ->
-    @serial   = fields.serial || false
-    @easing   = fields.easing || EaseLinear
-    @_tasks = []
+    @rate      = fields.rate || 1
+    @started   = fields.started || ->
+    @completed = fields.completed || ->
+    @serial    = fields.serial || false
+    @easing    = fields.easing || EaseLinear
+    @_tasks    = []
   addTask: (task) ->
     @_tasks.push task
   transaction: ->
@@ -294,11 +296,10 @@ class TransactionBuilder
     new Transaction
       rate: @rate
       started: @started
-      complete: @complete
+      completed: @completed
       serial: @serial
       easing: @easing
       tasks: @_tasks
-
 
 # Scheduler
 # ---------------------------------------------------------------------

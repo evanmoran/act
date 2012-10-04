@@ -245,6 +245,8 @@
       this._easing = fields.easing;
       this._tasks = fields.tasks;
       this._reverseTasks = (this._tasks.slice(0)).reverse();
+      this._started = fields.started;
+      this._completed = fields.completed;
       this._elapsed = 0;
       this.duration = (_maxEndTime(this._tasks)) / this._rate;
       this.startTime = 0;
@@ -281,11 +283,11 @@
     };
 
     Transaction.prototype._start = function() {
-      return typeof this.started === "function" ? this.started() : void 0;
+      return typeof this._started === "function" ? this._started() : void 0;
     };
 
     Transaction.prototype._complete = function() {
-      return typeof this.completed === "function" ? this.completed() : void 0;
+      return typeof this._completed === "function" ? this._completed() : void 0;
     };
 
     return Transaction;
@@ -300,7 +302,7 @@
       }
       this.rate = fields.rate || 1;
       this.started = fields.started || function() {};
-      this.complete = fields.complete || function() {};
+      this.completed = fields.completed || function() {};
       this.serial = fields.serial || false;
       this.easing = fields.easing || EaseLinear;
       this._tasks = [];
@@ -324,7 +326,7 @@
       return new Transaction({
         rate: this.rate,
         started: this.started,
-        complete: this.complete,
+        completed: this.completed,
         serial: this.serial,
         easing: this.easing,
         tasks: this._tasks
