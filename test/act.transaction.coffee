@@ -25,7 +25,7 @@ describe 'act.transaction', ->
     point = x:0, y:0
     act.begin()
     act point, x: '+=': 1
-    act point, y: '+': 2
+    act point, y: '+=': 2
     act.commit()
 
     act.fastForward(0.5)
@@ -40,7 +40,7 @@ describe 'act.transaction', ->
     point = x:0, y:0
     act.begin()
     act point, x: '-=': 1
-    act point, y: '-': 2
+    act point, y: '-=': 2
     act.commit()
 
     act.fastForward(0.5)
@@ -55,7 +55,7 @@ describe 'act.transaction', ->
     point = x:1, y:1
     act.begin()
     act point, x: '*=': 2
-    act point, y: '*': 3
+    act point, y: '*=': 3
     act.commit()
 
     act.fastForward(0.5)
@@ -70,7 +70,7 @@ describe 'act.transaction', ->
     point = x:1, y:1
     act.begin()
     act point, x: '/=': 2
-    act point, y: '/': 3
+    act point, y: '/=': 3
     act.commit()
 
     act.fastForward(0.5)

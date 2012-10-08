@@ -139,6 +139,34 @@ actGenerator = ->
   return act
 
 
+# act.Interpolator
+# ---------------------------------------------------------------------
+NumericInterpolator = (obj, destination) ->
+  initial = {}
+  final = {}
+  for key of destination
+    initial[key] = obj[key]
+    # Do conversion from relative to absolute here
+    final[key] = _final obj[key], destination[key]['op'], destination[key]['value']
+  (t) ->
+    for k, v of final
+      obj[k] = _interp initial[k], v, t
+
+_interp = (a, b, t) -> a * (1.0 - t) + b * t
+
+_final = (initial, op, value) ->
+  if op == '==' or op == '='
+    return value
+  else if op == '/='
+    return initial / value
+  else if op == '*='
+    return initial * value
+  else if op == '-='
+    return initial - value
+  else if op == '+='
+    return initial + value
+
+
 # act.Task
 # ---------------------------------------------------------------------
 class Task
@@ -147,6 +175,7 @@ class Task
     @started = options.started || ->
     @completed = options.completed || ->
     @_easing = options.easing || EaseLinear
+    @_interpolation = options.interpolation || NumericInterpolator
     @startTime = 0
     @_elapsed = 0
 
@@ -167,8 +196,7 @@ class Task
 
     # Update the children
     eased = @_easing (elapsed / @duration)
-    for k, v of @final
-      @obj[k] = _interp @initial[k], v, eased
+    @_interpolator eased
 
     if (elapsed >= @duration)
       @_complete()
@@ -176,30 +204,11 @@ class Task
     @_elapsed = elapsed
 
   _start: ->
-    @initial = {}
-    @final = {}
-    for key of @destination
-      @initial[key] = @obj[key]
-      # Do conversion from relative to absolute here
-      @final[key] = _final @obj[key], @destination[key]['op'], @destination[key]['value']
+    @_interpolator = @_interpolation(@obj, @destination)
     @started?()
 
   _complete: ->
     @completed?()
-
-_interp = (a, b, t) -> a * (1.0 - t) + b * t
-
-_final = (initial, op, value) ->
-  if op == '==' or op == '='
-    return value
-  else if op == '/=' or op =='/'
-    return initial / value
-  else if op == '*=' or op =='*'
-    return initial * value
-  else if op == '-=' or op =='-'
-    return initial - value
-  else if op == '+=' or op =='+'
-    return initial + value
 
 _maxEndTime = (tasks) -> _.reduce tasks, ((acc,task) -> Math.max acc, (task.startTime + task.duration)), 0
 
