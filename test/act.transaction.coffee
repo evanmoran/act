@@ -114,6 +114,11 @@ describe 'act.transaction', ->
     act.fastForward(1)
     point.x.should.equal 1
 
+  it 'value transaction duration zero'
+    # Fast forward 0 should make all duration zero tasks happen once they are started
+
+  it 'value transaction (rate 0)'
+    # Fast forward 0 should make all rate 0 tasks happen once they are started
   it 'serial transaction', ->
     point = x: 0, y: 0
     act.begin(serial: true)
