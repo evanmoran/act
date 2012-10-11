@@ -19,6 +19,52 @@ describe 'act.property', ->
     act.fastForward +0.5
     expect(point.x).to.equal 1
 
+  it 'parallel one property with options', ->
+
+    point = {}
+    act.property point, 'x', 0, duration: 2
+
+    point.x = 1
+    expect(point.x).to.equal 0
+
+    act.fastForward 0
+    expect(point.x).to.equal 0
+
+    act.fastForward +0.5
+    expect(point.x).to.equal 0.25
+
+    act.fastForward +0.5
+    expect(point.x).to.equal 0.5
+
+    act.fastForward +0.5
+    expect(point.x).to.equal 0.75
+
+    act.fastForward +0.5
+    expect(point.x).to.equal 1
+
+  it 'parallel one property with actOptions', ->
+
+    point = {actOptions: x: duration: 2}
+    act.property point, 'x', 0
+
+    point.x = 1
+    expect(point.x).to.equal 0
+
+    act.fastForward 0
+    expect(point.x).to.equal 0
+
+    act.fastForward +0.5
+    expect(point.x).to.equal 0.25
+
+    act.fastForward +0.5
+    expect(point.x).to.equal 0.5
+
+    act.fastForward +0.5
+    expect(point.x).to.equal 0.75
+
+    act.fastForward +0.5
+    expect(point.x).to.equal 1
+
   it 'parallel two properties (with duration)', ->
     point = {z:0}
     act.properties point, {x:0, y:0}, x:duration:2
@@ -53,146 +99,102 @@ describe 'act.property', ->
     expect(point.x).to.equal 1
     expect(point.y).to.equal 2
     expect(point.z).to.equal 3
-  # it 'serial two properties', ->
-  #   point = x:0, y:0
-  #   point = act.implicit point
 
-  #   act.begin(serial: true)
-  #   point.x = 1
-  #   point.y = 2
-  #   act.commit()
+  it 'parallel two properties (with actOptions)', ->
+    point = {z:0, actOptions: x:duration:2}
+    act.properties point, {x:0, y:0}
 
-  #   expect(point.x).to.equal 0
-  #   expect(point.y).to.equal 0
+    point.x = 1
+    point.y = 2
+    point.z = 3
 
-  #   act.fastForward 0
-  #   expect(point.x).to.equal 0
-  #   expect(point.y).to.equal 0
+    expect(point.x).to.equal 0
+    expect(point.y).to.equal 0
+    expect(point.z).to.equal 3
 
-  #   act.fastForward +0.5
-  #   expect(point.x).to.equal 0.5
-  #   expect(point.y).to.equal 0
+    act.fastForward 0
+    expect(point.x).to.equal 0
+    expect(point.y).to.equal 0
+    expect(point.z).to.equal 3
 
-  #   act.fastForward +0.5
-  #   expect(point.x).to.equal 1
-  #   expect(point.y).to.equal 0
+    act.fastForward +0.5
+    expect(point.x).to.equal 0.25
+    expect(point.y).to.equal 1
 
-  #   act.fastForward +0.5
-  #   expect(point.x).to.equal 1
-  #   expect(point.y).to.equal 1
+    act.fastForward +0.5
+    expect(point.x).to.equal 0.5
+    expect(point.y).to.equal 2
+    expect(point.z).to.equal 3
 
-  #   act.fastForward +0.5
-  #   expect(point.x).to.equal 1
-  #   expect(point.y).to.equal 2
+    act.fastForward +0.5
+    expect(point.x).to.equal 0.75
+    expect(point.y).to.equal 2
 
-  # it 'parallel one property with rate 2', ->
-  #   point = x:0
-  #   point = act.implicit point
+    act.fastForward +0.5
+    expect(point.x).to.equal 1
+    expect(point.y).to.equal 2
+    expect(point.z).to.equal 3
 
-  #   act.begin(rate: 2)
-  #   point.x = 1
-  #   act.commit()
+  it 'serial two properties', ->
+    point = {}
+    act.properties point, {x:0, y:0}
 
-  #   act.fastForward 0
-  #   expect(point.x).to.equal 0
+    act.begin(serial: true)
+    point.x = 1
+    point.y = 2
+    act.commit()
 
-  #   act.fastForward +0.25
-  #   expect(point.x).to.equal 0.5
+    expect(point.x).to.equal 0
+    expect(point.y).to.equal 0
 
-  #   act.fastForward +0.25
-  #   expect(point.x).to.equal 1
+    act.fastForward 0
+    expect(point.x).to.equal 0
+    expect(point.y).to.equal 0
 
-  #   act.fastForward +1
-  #   expect(point.x).to.equal 1
+    act.fastForward +0.5
+    expect(point.x).to.equal 0.5
+    expect(point.y).to.equal 0
 
-  # it 'explicit animation', ->
-  #   point = x:0
-  #   point = act.implicit point
+    act.fastForward +0.5
+    expect(point.x).to.equal 1
+    expect(point.y).to.equal 0
 
-  #   act point, x:'+=':1
-  #   expect(point.x).to.equal 0
+    act.fastForward +0.5
+    expect(point.x).to.equal 1
+    expect(point.y).to.equal 1
 
-  #   act.fastForward 0
-  #   expect(point.x).to.equal 0
+    act.fastForward +0.5
+    expect(point.x).to.equal 1
+    expect(point.y).to.equal 2
 
-  #   act.fastForward +0.5
-  #   expect(point.x).to.equal 0.5
+  it 'act options ', ->
+    point = {}
+    act.properties point, {x:0, y:0}
 
-  #   act.fastForward +0.5
-  #   expect(point.x).to.equal 1
+    act.begin(serial: true)
+    point.x = 1
+    point.y = 2
+    act.commit()
 
-  # linearAnimator = (obj, destinations) ->
-  #   _interp = (a, b, t) -> a * (1.0 - t) + b * t
-  #   initials = _.pick obj, (_.keys destinations)...
-  #   finals = _.clone destinations
-  #   (t) ->
-  #     changed = {}
-  #     for k, v of finals
-  #       changed[k] = _interp initials[k], finals[k], t
-  #     changed
+    expect(point.x).to.equal 0
+    expect(point.y).to.equal 0
 
-  # # Animates one key at a time linearly in alphabetical older (like Manhattan distance!)
-  # manhattanAnimator = (obj, destination) ->
-  #   animators = []
-  #   keys = (_.keys destination).sort()
-  #   for k in keys
-  #     animators.push linearAnimator obj, (_.pick destination, k)
-  #   (t) ->
-  #     ans = {}
-  #     t *= keys.length
-  #     for animator in animators
-  #       t1 = if t < 0 then 0 else if t > 1 then 1 else t
-  #       _.extend ans, animator t1
-  #       t -= 1
-  #     ans
+    act.fastForward 0
+    expect(point.x).to.equal 0
+    expect(point.y).to.equal 0
 
-  # it 'custom inline animator', ->
-  #   point = x:0, y:0
-  #   act point, {x:1, y:2}, {animator: manhattanAnimator}
+    act.fastForward +0.5
+    expect(point.x).to.equal 0.5
+    expect(point.y).to.equal 0
 
-  #   expect(point.x).to.equal 0
-  #   expect(point.y).to.equal 0
+    act.fastForward +0.5
+    expect(point.x).to.equal 1
+    expect(point.y).to.equal 0
 
-  #   act.fastForward 0
-  #   expect(point.x).to.equal 0
-  #   expect(point.y).to.equal 0
+    act.fastForward +0.5
+    expect(point.x).to.equal 1
+    expect(point.y).to.equal 1
 
-  #   act.fastForward +0.5
-  #   expect(point.x).to.equal 1
-  #   expect(point.y).to.equal 0
-
-  #   act.fastForward +0.5
-  #   expect(point.x).to.equal 1
-  #   expect(point.y).to.equal 2
-
-  # it 'actOptions', ->
-  #   point = x:0, name: 'Evan', actOptions: name: 'setAtEnd'
-  #   point = act.implicit point
-
-  #   point.name = "James"
-  #   expect(point.name).to.equal "Evan"
-
-  #   act.fastForward 0
-  #   expect(point.name).to.equal "Evan"
-
-  #   act.fastForward +0.5
-  #   expect(point.name).to.equal "Evan"
-
-  #   act.fastForward +0.5
-  #   expect(point.name).to.equal "James"
-
-  # it 'actOptions can omit values with null', ->
-  #   point = x:0, name: 'Evan', actOptions: name: 'setAtEnd', x: null
-  #   point = act.implicit point
-  #   point.x = 1
-  #   expect(point.x).to.equal 1
-
-  #   act.fastForward 0
-  #   expect(point.x).to.equal 1
-
-  #   act.fastForward +0.5
-  #   expect(point.x).to.equal 1
-
-  #   act.fastForward +0.5
-  #   expect(point.x).to.equal 1
-
+    act.fastForward +0.5
+    expect(point.x).to.equal 1
+    expect(point.y).to.equal 2

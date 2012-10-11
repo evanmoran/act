@@ -91,7 +91,7 @@
     act.property = function(obj, key, val, options) {
       var store;
       if ((_.isUndefined(options)) && obj.actOptions) {
-        options = _.isFunction(obj.actOptions) ? obj.actOptions()[k] : obj.actOptions[k];
+        options = _.isFunction(obj.actOptions) ? obj.actOptions()[key] : obj.actOptions[key];
       }
       store = {
         value: val
@@ -112,7 +112,7 @@
       _results = [];
       for (k in properties) {
         v = properties[k];
-        _results.push(act.property(obj, k, v, options[k]));
+        _results.push(act.property(obj, k, v, options != null ? options[k] : void 0));
       }
       return _results;
     };

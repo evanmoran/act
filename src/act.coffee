@@ -138,9 +138,9 @@ actGenerator = ->
     # Default options to actOptions[k]
     if (_.isUndefined options) and obj.actOptions
       options = if _.isFunction obj.actOptions
-          obj.actOptions()[k]
+          obj.actOptions()[key]
         else
-          obj.actOptions[k]
+          obj.actOptions[key]
     # Close over animatable value
     store = value: val
     Object.defineProperty obj, key,
@@ -152,7 +152,7 @@ actGenerator = ->
 
   act.properties = (obj, properties, options) ->
     for k, v of properties
-      act.property obj, k, v, options[k]
+      act.property obj, k, v, options?[k]
 
   # act.implicit
   # ---------------------------------------------------------------------
