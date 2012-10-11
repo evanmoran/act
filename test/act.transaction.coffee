@@ -114,11 +114,20 @@ describe 'act.transaction', ->
     act.fastForward(1)
     point.x.should.equal 1
 
-  it 'value transaction duration zero'
-    # Fast forward 0 should make all duration zero tasks happen once they are started
+  # throw on duration 0
+  it 'duration 0', ->
+    point = x:0, y:0
+    expect(-> act point, x:1, {duration: 0}).to.throw 'act: duration must be positive'
 
-  it 'value transaction (rate 0)'
-    # Fast forward 0 should make all rate 0 tasks happen once they are started
+  # throw on rate 0
+  it 'rate 0', ->
+    point = x:0, y:0
+    expect(->
+      act.begin(rate:0)
+      act(point, x:1)
+      act.commit()
+    ).to.throw 'act: rate must be positive'
+
   it 'serial transaction', ->
     point = x: 0, y: 0
     act.begin(serial: true)

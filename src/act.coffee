@@ -18,18 +18,18 @@ actGenerator = ->
   # act.function
   # ---------------------------------------------------------------------
   act = (obj, dest, options = {}) ->
-    destination = {}
-    for k, v of dest
-      if _.isObject v
-        ops = _.keys v
-        throw "act: expected only one operator (#{ops})" unless ops.length == 1
-        destination[k] = op: ops[0], value: v[ops[0]]
-      else
-        destination[k] = op: '=', value: v
-
     scheduler = act._scheduler
-    task = new Task obj, destination, options
-    scheduler.addTask task
+
+    if obj instanceof Implicit
+      obj = obj._obj
+
+    if options.animator
+      task = new Task obj, dest, options
+      scheduler.addTask task
+    else
+      for k of dest
+        task = new Task obj, (_.pick dest, k), options
+        scheduler.addTask task
 
   # act.EaseLinear, etc.
   # ---------------------------------------------------------------------
@@ -131,26 +131,57 @@ actGenerator = ->
     scheduler = @_scheduler
     scheduler.addTask builderTop.transaction()
 
+  act.implicit = (obj, options = {}) ->
+    # Default animation options
+    options = _.clone options
+    if obj.actOptions
+      _.defaults options, (if _.isFunction obj.actOptions then obj.actOptions() else obj.actOptions)
+    for k, v of obj
+      # Null means omit
+      if options[k] == null
+        options[k] = {animator: null}
+      # Undefined means default animator
+      else if options[k] == undefined
+        options[k] = {animator: _defaultInterpolationForValue v}
+      else if _.isString options[k] or _.isFunction options[k]
+        options[k] = {animator: options[k]}
+      else
+        throw new Error "act: animator is not string or function"
+    new Implicit act, obj, options
+
+  _defaultInterpolationForValue = (v) ->
+    if _.isNumber v then linearAnimator else setAtEndAnimator
+
   # _rootScheduler
   # ---------------------------------------------------------------------
   # act root scheduler
   act._rootScheduler = new Scheduler()
   act.play()
+
+  # End actGenerator
   return act
 
-
-# act.Interpolator
+# act.Animator
 # ---------------------------------------------------------------------
-NumericInterpolator = (obj, destination) ->
-  initial = {}
-  final = {}
-  for key of destination
-    initial[key] = obj[key]
-    # Do conversion from relative to absolute here
-    final[key] = _final obj[key], destination[key]['op'], destination[key]['value']
+linearAnimator = (obj, destinations) ->
+  initials = {}
+  finals = {}
+  for k, v of destinations
+    # Handle operators
+    if _.isObject v
+      ops = _.keys v
+      throw (new Error "act: expected only one operator (#{ops})") unless ops.length == 1
+      destinations[k] = op: ops[0], value: v[ops[0]]
+    else
+      destinations[k] = op: '=', value: v
+
+    initials[k] = obj[k]
+    finals[k] = _final initials[k], destinations[k]['op'], destinations[k]['value']
   (t) ->
-    for k, v of final
-      obj[k] = _interp initial[k], v, t
+    changed = {}
+    for k, v of finals
+      changed[k] = _interp initials[k], finals[k], t
+    changed
 
 _interp = (a, b, t) -> a * (1.0 - t) + b * t
 
@@ -166,16 +197,42 @@ _final = (initial, op, value) ->
   else if op == '+='
     return initial + value
 
+# setAtEndAnimator
+# ---------------------------------------------------------------------
+setAtEndAnimator = (obj, destinations) ->
+  initials = _pickKeys destinations, obj
+  finals = _.clone destinations
+  (t) -> _.clone (if t < 1 then initials else finals)
+
+# Animator short names
+# ---------------------------------------------------------------------
+mapAnimatorFromName =
+  'setAtEnd':       setAtEndAnimator
+  'linear':         linearAnimator
+  # 'type':           typeByItemAnimator          # Works on arrays and strings
+  # 'typeByWord':     typeByWordAnimator          # Works on strings only
+  # 'step':           stepAnimator
+  # 'color':          colorAnimator
+  # 'region':         regionAnimator
+  # 'stringTypeWord': stringTypeByWordAnimator
 
 # act.Task
 # ---------------------------------------------------------------------
+
 class Task
   constructor: (@obj, @destination, options = {}) ->
+    if options.duration? and options.duration <= 0
+      throw new Error 'act: duration must be positive'
     @duration = options.duration || 1
     @started = options.started || ->
     @completed = options.completed || ->
     @_easing = options.easing || EaseLinear
-    @_interpolation = options.interpolation || NumericInterpolator
+
+    @_animator = if _.isString options.animator
+        mapAnimatorFromName[options.animator]
+      else
+        options.animator || linearAnimator
+
     @startTime = 0
     @_elapsed = 0
 
@@ -196,7 +253,7 @@ class Task
 
     # Update the children
     eased = @_easing (elapsed / @duration)
-    @_interpolator eased
+    _.extend @obj, (@_interpolator eased)
 
     if (elapsed >= @duration)
       @_complete()
@@ -204,11 +261,21 @@ class Task
     @_elapsed = elapsed
 
   _start: ->
-    @_interpolator = @_interpolation(@obj, @destination)
+    @_interpolator = @_animator @obj, @destination
+
+    finalValue = @_interpolator 1
+    initialValue = _pickKeys finalValue, @obj
+    @obj.actBefore? initialValue, finalValue
     @started?()
 
   _complete: ->
+    initialValue = @_interpolator 0
+    finalValue = _pickKeys initialValue, @obj
+    @obj.actAfter? initialValue, finalValue
     @completed?()
+
+_pickKeys = (ks, vs) ->
+  _.pick vs, (_.keys ks)...
 
 _maxEndTime = (tasks) -> _.reduce tasks, ((acc,task) -> Math.max acc, (task.startTime + task.duration)), 0
 
@@ -216,14 +283,14 @@ _maxEndTime = (tasks) -> _.reduce tasks, ((acc,task) -> Math.max acc, (task.star
 # ---------------------------------------------------------------------
 
 Ease = {}
-Ease.EaseLinear =  EaseLinear  = (v) -> v
-Ease.EaseIn =      EaseIn      = (v) -> v * v * v
-Ease.EaseOut =     EaseOut     = (v) -> 1.0 - EaseIn(1.0 - v)
-Ease.EaseIn2 =      EaseIn2     = (v) -> v * v
-Ease.EaseOut2 =     EaseOut2    = (v) -> 1.0 - EaseIn(1.0 - v)
-Ease.EaseInOut =   EaseInOut   = (v) -> if v < 0.5 then EaseIn(v * 2) / 2 else EaseOut(v * 2 - 1.0) / 2 + 0.5
-Ease.EaseInOut2 =   EaseInOut2   = (v) -> (3 * v * v) - 2 * v * v * v
-Ease.EaseOutBounce =   EaseOutBounce  = (v) ->
+Ease.EaseLinear     =   EaseLinear      = (v) -> v
+Ease.EaseIn         =   EaseIn          = (v) -> v * v * v
+Ease.EaseOut        =   EaseOut         = (v) -> 1.0 - EaseIn(1.0 - v)
+Ease.EaseIn2        =   EaseIn2         = (v) -> v * v
+Ease.EaseOut2       =   EaseOut2        = (v) -> 1.0 - EaseIn(1.0 - v)
+Ease.EaseInOut      =   EaseInOut       = (v) -> if v < 0.5 then EaseIn(v * 2) / 2 else EaseOut(v * 2 - 1.0) / 2 + 0.5
+Ease.EaseInOut2     =   EaseInOut2      = (v) -> (3 * v * v) - 2 * v * v * v
+Ease.EaseOutBounce  =   EaseOutBounce   = (v) ->
   if (v < 1 / 2.75)
     7.5625 * v * v
   else if (v < 2 / 2.75)
@@ -242,6 +309,7 @@ class Transaction
   constructor: (fields) ->
     @_serial = fields.serial
     @_rate = fields.rate
+    throw new Error 'act: rate must be positive' unless @_rate > 0
     @_easing = fields.easing
     @_tasks = fields.tasks
     @_reverseTasks = (@_tasks.slice 0).reverse()
@@ -285,10 +353,12 @@ class Transaction
 
 # TransactionBuilder
 # ---------------------------------------------------------------------
+_default = (a = b, b) ->
+  a
 
 class TransactionBuilder
   constructor: (fields = {}) ->
-    @rate      = fields.rate || 1
+    @rate      = _default fields.rate, 1
     @started   = fields.started || ->
     @completed = fields.completed || ->
     @serial    = fields.serial || false
@@ -331,6 +401,52 @@ class Scheduler
 
   @rate = 1.0
 
+
+# Implicit
+# ---------------------------------------------------------------------
+# Proxy assignments to create implicit animations
+class Implicit
+  constructor: (@_act, @_obj, options) ->
+    _defineAnimatedProperty = (k, actOptions) =>
+      Object.defineProperty @, k,
+        get: => @_obj[k]
+        set: (v) => @_act @_obj, (_objectFromKeysAndValues k, v), actOptions
+    _definePassthroughProperty = (k) =>
+      Object.defineProperty @, k,
+        get: => @_obj[k]
+        set: (v) => @_obj[k] = v
+    _proxyFunction = (k) =>
+      @[k] = ->
+        @_obj[k].apply @, arguments
+
+    # Proxy the given setters, with animation
+    for k, opts of options
+      do (k, opts) =>
+        if opts == null or opts.animator == null
+          _definePassthroughProperty k
+        else
+          _defineAnimatedProperty k, opts
+
+    # Proxy all methods and remaining non-animated properties
+    for k, v of @_obj
+      do (k, v) =>
+        # Functions apply as if from the original object
+        if _.isFunction v
+          _proxyFunction k
+        else if not @[k]?
+          # Pass through properties that aren't animated to the original object
+          _definePassthroughProperty k
+
+_objectFromKeysAndValues = ->
+  obj = Object.create null
+  i =  0
+  while i + 1 < arguments.length
+    k = arguments[i]
+    v = arguments[i + 1]
+    obj[k] = v
+    i += 2
+  obj
+
 # _setTimeout
 # ---------------------------------------------------------------------
 # Abstract setTimeout to
@@ -365,7 +481,7 @@ _smoothTicks = (simulate, tick, fn) ->
   ###
   # TODO: Think about this later
   return fn unless simulate
-  throw 'tick must be positive' unless tick > 0
+  throw (new Error 'tick must be positive') unless tick > 0
   timeElapsed = 0
   (dt) ->
     timeElapsed += dt
@@ -384,11 +500,11 @@ Array.prototype.remove = (from, to) ->
 # act
 # ---------------------------------------------------------------------
 _extendEventFunctions = (obj) ->
-  throw 'object already has event functions' if obj.on? or obj.off? or obj.trigger?
+  throw (new Error 'act: object already has event functions') if obj.on? or obj.off? or obj.trigger?
   eventCallbacks = {}
 
   obj.on = (eventName, cb) ->
-    throw 'cb is not a function' unless _.isFunction cb
+    throw (new Error 'act.on: callback is not a function') unless _.isFunction cb
     # Create event if necessary
     cbs = if eventCallbacks[eventName] then eventCallbacks[eventName] else []
     eventCallbacks[eventName] = cbs
