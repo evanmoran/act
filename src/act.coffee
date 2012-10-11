@@ -131,6 +131,32 @@ actGenerator = ->
     scheduler = @_scheduler
     scheduler.addTask builderTop.transaction()
 
+  # act.property
+  # ---------------------------------------------------------------------
+
+  act.property = (obj, key, val, options) ->
+    # Default options to actOptions[k]
+    if (_.isUndefined options) and obj.actOptions
+      options = if _.isFunction obj.actOptions
+          obj.actOptions()[k]
+        else
+          obj.actOptions[k]
+    # Close over animatable value
+    store = value: val
+    Object.defineProperty obj, key,
+      get: -> store.value
+      set: (v) -> act store, value: v, options
+
+  # act.properties
+  # ---------------------------------------------------------------------
+
+  act.properties = (obj, properties, options) ->
+    for k, v of properties
+      act.property obj, k, v, options[k]
+
+  # act.implicit
+  # ---------------------------------------------------------------------
+
   act.implicit = (obj, options = {}) ->
     # Default animation options
     options = _.clone options

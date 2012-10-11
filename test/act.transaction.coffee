@@ -291,29 +291,3 @@ describe 'act.transaction', ->
   it 'on render called every tick', (done) ->
     act.on 'render', ->
       done()
-
-  it 'rotation'
-  #   region = x:0, y:0, width:10, height:10, theta: Math.PI/2
-  #   act.step() # high level step
-  #   act.play()
-  #   act.stop()
-
-  #   act.begin(easing: act.Easing.Linear, duration:10)
-  #   act.commit()
-
-  #   s = act.begin()
-  #     act point, x, '-=', 1
-  #     act point, x:'+=': 1
-  #   act.commit()
-
-  # it 'serial transaction'
-
-  #   # act.begin(serial: true)
-
-
-
-
-
-
-
-

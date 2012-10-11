@@ -88,6 +88,34 @@
       scheduler = this._scheduler;
       return scheduler.addTask(builderTop.transaction());
     };
+    act.property = function(obj, key, val, options) {
+      var store;
+      if ((_.isUndefined(options)) && obj.actOptions) {
+        options = _.isFunction(obj.actOptions) ? obj.actOptions()[k] : obj.actOptions[k];
+      }
+      store = {
+        value: val
+      };
+      return Object.defineProperty(obj, key, {
+        get: function() {
+          return store.value;
+        },
+        set: function(v) {
+          return act(store, {
+            value: v
+          }, options);
+        }
+      });
+    };
+    act.properties = function(obj, properties, options) {
+      var _results;
+      _results = [];
+      for (k in properties) {
+        v = properties[k];
+        _results.push(act.property(obj, k, v, options[k]));
+      }
+      return _results;
+    };
     act.implicit = function(obj, options) {
       if (options == null) {
         options = {};
