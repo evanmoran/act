@@ -226,7 +226,7 @@ _final = (initial, op, value) ->
 # setAtEndAnimator
 # ---------------------------------------------------------------------
 setAtEndAnimator = (obj, destinations) ->
-  initials = _pickKeys destinations, obj
+  initials = _.pick obj, _.keys(destinations)...
   finals = _.clone destinations
   (t) -> _.clone (if t < 1 then initials else finals)
 
@@ -279,7 +279,8 @@ class Task
 
     # Update the children
     eased = @_easing (elapsed / @duration)
-    _.extend @obj, (@_interpolator eased)
+    extender = (@_interpolator eased)
+    _.extend @obj, extender
 
     if (elapsed >= @duration)
       @_complete()
@@ -290,18 +291,15 @@ class Task
     @_interpolator = @_animator @obj, @destination
 
     finalValue = @_interpolator 1
-    initialValue = _pickKeys finalValue, @obj
+    initialValue = @_interpolator 0
     @obj.actBefore? initialValue, finalValue
     @started?()
 
   _complete: ->
     initialValue = @_interpolator 0
-    finalValue = _pickKeys initialValue, @obj
+    finalValue = @_interpolator 1
     @obj.actAfter? initialValue, finalValue
     @completed?()
-
-_pickKeys = (ks, vs) ->
-  _.pick vs, (_.keys ks)...
 
 _maxEndTime = (tasks) -> _.reduce tasks, ((acc,task) -> Math.max acc, (task.startTime + task.duration)), 0
 
