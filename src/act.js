@@ -89,23 +89,30 @@
       return scheduler.addTask(builderTop.transaction());
     };
     act.property = function(obj, key, val, options) {
-      var store;
+      var setter, store;
       if ((_.isUndefined(options)) && obj.actOptions) {
         options = _.isFunction(obj.actOptions) ? obj.actOptions()[key] : obj.actOptions[key];
       }
       store = {
         value: val
       };
+      setter = function(v) {
+        return act(store, {
+          value: v
+        }, options);
+      };
+      setter._actStore = store;
       return Object.defineProperty(obj, key, {
         get: function() {
           return store.value;
         },
-        set: function(v) {
-          return act(store, {
-            value: v
-          }, options);
-        }
+        set: setter
       });
+    };
+    act._implicitPropertyStore = function(obj, key) {
+      var d, _ref;
+      d = Object.getOwnPropertyDescriptor(obj, key);
+      return d != null ? (_ref = d.set) != null ? _ref._actStore : void 0 : void 0;
     };
     act.properties = function(obj, properties, options) {
       var _results;
@@ -244,7 +251,7 @@
     }
 
     Task.prototype.update = function(time) {
-      var eased, elapsed, extender;
+      var eased, elapsed, extender, k, store, v;
       elapsed = time - this.startTime;
       if ((this._elapsed <= 0) && (elapsed <= 0)) {
         return;
@@ -262,7 +269,14 @@
       }
       eased = this._easing(elapsed / this.duration);
       extender = this._interpolator(eased);
-      _.extend(this.obj, extender);
+      for (k in extender) {
+        v = extender[k];
+        if (store = act._implicitPropertyStore(this.obj, k)) {
+          store.value = v;
+        } else {
+          this.obj[k] = v;
+        }
+      }
       if (elapsed >= this.duration) {
         this._complete();
       }
@@ -652,7 +666,7 @@
 
   act = actGenerator();
 
-  act.version = '0.0.2';
+  act.version = '0.0.3';
 
   module.exports = act;
 

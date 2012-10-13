@@ -143,9 +143,17 @@ actGenerator = ->
           obj.actOptions[key]
     # Close over animatable value
     store = value: val
+
+    setter = (v) -> act store, value: v, options
+    setter._actStore = store
+
     Object.defineProperty obj, key,
       get: -> store.value
-      set: (v) -> act store, value: v, options
+      set: setter
+
+  act._implicitPropertyStore = (obj, key) ->
+    d = Object.getOwnPropertyDescriptor obj, key
+    return d?.set?._actStore
 
   # act.properties
   # ---------------------------------------------------------------------
@@ -280,7 +288,11 @@ class Task
     # Update the children
     eased = @_easing (elapsed / @duration)
     extender = (@_interpolator eased)
-    _.extend @obj, extender
+    for k, v of extender
+      if store = act._implicitPropertyStore @obj, k
+        store.value = v
+      else
+        @obj[k] = v
 
     if (elapsed >= @duration)
       @_complete()
@@ -555,7 +567,7 @@ act = actGenerator()
 
 # Version
 # ---------------------------------------------------------------------
-act.version = '0.0.2'
+act.version = '0.0.3'
 
 # Export
 # ---------------------------------------------------------------------
