@@ -1,6 +1,6 @@
 {
   "name": "act",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "src/act.js",
   "description": "An animation engine for the canvas and dom",
   "homepage": "http://github.com/evanmoran/act/",
