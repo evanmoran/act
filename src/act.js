@@ -624,43 +624,84 @@
   };
 
   _extendEventFunctions = function(obj) {
-    var eventCallbacks;
+    var _eventHandlers;
     if ((obj.on != null) || (obj.off != null) || (obj.trigger != null)) {
       throw new Error('act: object already has event functions');
     }
-    eventCallbacks = {};
-    obj.on = function(eventName, cb) {
-      var cbs;
-      if (!_.isFunction(cb)) {
-        throw new Error('act.on: callback is not a function');
+    _eventHandlers = {};
+    obj.on = function(eventName, cb, context) {
+      var eventHandler, eventNames, name, _i, _len;
+      if (!_.isString(eventName)) {
+        throw new Error('act.on: eventName is not a string');
       }
-      cbs = eventCallbacks[eventName] ? eventCallbacks[eventName] : [];
-      eventCallbacks[eventName] = cbs;
-      cbs.push(cb);
+      if (!_.isFunction(cb)) {
+        throw new Error('act.on: eventHandler is not a function');
+      }
+      eventNames = eventName.split(' ');
+      eventHandler = {
+        cb: cb,
+        context: context
+      };
+      for (_i = 0, _len = eventNames.length; _i < _len; _i++) {
+        name = eventNames[_i];
+        if (name.length) {
+          if (!_eventHandlers[name]) {
+            _eventHandlers[name] = [];
+          }
+          _eventHandlers[name].push(eventHandler);
+        }
+      }
       return function() {
-        return obj.off(eventName, cb);
+        return obj.off(eventName, cb, context);
       };
     };
-    obj.off = function(eventName, cb) {
-      var cbs, ix;
-      if (!cb) {
-        return delete eventCallbacks[eventName];
-      } else if (cbs = eventCallbacks[eventName]) {
-        if ((ix = cbs.indexOf(cb)) !== -1) {
-          return cbs.remove(ix);
+    obj.off = function(eventName, cb, context) {
+      var eventHandlersToChange, eventNames, handlers, name, _i, _len;
+      if (eventName) {
+        eventHandlersToChange = {};
+        eventNames = eventName.split(' ');
+        for (_i = 0, _len = eventNames.length; _i < _len; _i++) {
+          name = eventNames[_i];
+          if (name.length && _eventHandlers[name]) {
+            eventHandlersToChange[name] = _eventHandlers[name];
+          }
         }
+      } else {
+        eventHandlersToChange = _eventHandlers;
       }
+      for (name in eventHandlersToChange) {
+        handlers = eventHandlersToChange[name];
+        _eventHandlers[name] = _.reject(handlers, function(handler) {
+          if (cb) {
+            if (handler.cb !== cb) {
+              return false;
+            }
+          }
+          if (context) {
+            if (handler.context !== context) {
+              return false;
+            }
+          }
+          return true;
+        });
+      }
+      return null;
     };
     return obj.trigger = function(eventName) {
-      var cb, cbs, _i, _len, _results;
-      if (cbs = eventCallbacks[eventName]) {
-        _results = [];
-        for (_i = 0, _len = cbs.length; _i < _len; _i++) {
-          cb = cbs[_i];
-          _results.push(cb.apply(null, [obj].concat(__slice.call(_.toArray(arguments).slice(1)))));
+      var args, eventNames, handler, name, _i, _j, _len, _len1, _ref;
+      eventNames = eventName.split(' ');
+      for (_i = 0, _len = eventNames.length; _i < _len; _i++) {
+        name = eventNames[_i];
+        if (name.length && _eventHandlers[name]) {
+          _ref = _eventHandlers[name];
+          for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+            handler = _ref[_j];
+            args = Array.prototype.slice.call(arguments, 1);
+            handler.cb.apply(handler.context || obj, args);
+          }
         }
-        return _results;
       }
+      return null;
     };
   };
 

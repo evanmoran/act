@@ -287,7 +287,3 @@ describe 'act.transaction', ->
       point.x.should.equal 1
       done()
     ), 0.02 * 1000
-
-  it 'on render called every tick', (done) ->
-    act.on 'render', ->
-      done()

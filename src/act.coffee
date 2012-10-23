@@ -537,28 +537,49 @@ Array.prototype.remove = (from, to) ->
 # ---------------------------------------------------------------------
 _extendEventFunctions = (obj) ->
   throw (new Error 'act: object already has event functions') if obj.on? or obj.off? or obj.trigger?
-  eventCallbacks = {}
+  _eventHandlers = {}
 
-  obj.on = (eventName, cb) ->
-    throw (new Error 'act.on: callback is not a function') unless _.isFunction cb
-    # Create event if necessary
-    cbs = if eventCallbacks[eventName] then eventCallbacks[eventName] else []
-    eventCallbacks[eventName] = cbs
-#    cbs = eventCallbacks[eventName] = (eventCallbacks[eventName] || [])
-    cbs.push cb
-    ->
-      obj.off eventName, cb
+  obj.on = (eventName, cb, context) ->
+    throw (new Error 'act.on: eventName is not a string') unless _.isString eventName
+    throw (new Error 'act.on: eventHandler is not a function') unless _.isFunction cb
+    eventNames = eventName.split ' '
+    eventHandler = cb: cb, context: context
+    for name in eventNames
+      if name.length
+        _eventHandlers[name] = [] unless _eventHandlers[name]
+        _eventHandlers[name].push eventHandler
 
-  obj.off = (eventName, cb) ->
-    if not cb
-      delete eventCallbacks[eventName]
-    else if cbs = eventCallbacks[eventName]
-      cbs.remove(ix) if (ix = cbs.indexOf(cb) ) != -1
+    -> obj.off eventName, cb, context
+
+  obj.off = (eventName, cb, context) ->
+    if eventName
+      eventHandlersToChange = {}
+      eventNames = eventName.split ' '
+      for name in eventNames
+        if name.length and _eventHandlers[name]
+          eventHandlersToChange[name] = _eventHandlers[name]
+    else
+      eventHandlersToChange = _eventHandlers
+
+    # Match cb and context
+    for name, handlers of eventHandlersToChange
+      _eventHandlers[name] = _.reject handlers, (handler) ->
+        if cb
+          return false unless handler.cb == cb
+        if context
+          return false unless handler.context == context
+        true
+    null
 
   obj.trigger = (eventName) ->
-    if cbs = eventCallbacks[eventName]
-      for cb in cbs
-        cb(obj, _.toArray(arguments).slice(1)...)
+    eventNames = eventName.split ' '
+    for name in eventNames
+      if name.length and _eventHandlers[name]
+        for handler in _eventHandlers[name]
+          args = Array.prototype.slice.call arguments, 1
+          handler.cb.apply (handler.context || obj), args
+    null
+
 
 # act
 # ---------------------------------------------------------------------
