@@ -632,10 +632,10 @@
     obj.on = function(eventName, cb, context) {
       var eventHandler, eventNames, name, _i, _len;
       if (!_.isString(eventName)) {
-        throw new Error('act.on: eventName is not a string');
+        throw new Error("act.on: eventName is not a string (" + eventName + ")");
       }
       if (!_.isFunction(cb)) {
-        throw new Error('act.on: eventHandler is not a function');
+        throw new Error("act.on: eventHandler is not a function (eventName: " + eventName + ", eventHandler: " + cb + ")");
       }
       eventNames = eventName.split(' ');
       eventHandler = {

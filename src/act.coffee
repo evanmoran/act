@@ -540,8 +540,8 @@ _extendEventFunctions = (obj) ->
   _eventHandlers = {}
 
   obj.on = (eventName, cb, context) ->
-    throw (new Error 'act.on: eventName is not a string') unless _.isString eventName
-    throw (new Error 'act.on: eventHandler is not a function') unless _.isFunction cb
+    throw (new Error "act.on: eventName is not a string (#{eventName})") unless _.isString eventName
+    throw (new Error "act.on: eventHandler is not a function (eventName: #{eventName}, eventHandler: #{cb})") unless _.isFunction cb
     eventNames = eventName.split ' '
     eventHandler = cb: cb, context: context
     for name in eventNames
