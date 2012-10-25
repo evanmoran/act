@@ -172,7 +172,7 @@
       if (_.isObject(v)) {
         ops = _.keys(v);
         if (ops.length !== 1) {
-          throw new Error("act: expected only one operator (" + ops + ")");
+          throw new Error("act: expected only one operator (" + ops + ") for key " + k);
         }
         destinations[k] = {
           op: ops[0],
@@ -233,10 +233,18 @@
   Task = (function() {
 
     function Task(obj, destination, options) {
+      var k, v, _ref;
       this.obj = obj;
       this.destination = destination;
       if (options == null) {
         options = {};
+      }
+      _ref = this.destination;
+      for (k in _ref) {
+        v = _ref[k];
+        if (_.isFunction(v)) {
+          throw new Error('act: functions cannot be animated');
+        }
       }
       if ((options.duration != null) && options.duration <= 0) {
         throw new Error('act: duration must be positive');

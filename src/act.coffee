@@ -204,7 +204,7 @@ linearAnimator = (obj, destinations) ->
     # Handle operators
     if _.isObject v
       ops = _.keys v
-      throw (new Error "act: expected only one operator (#{ops})") unless ops.length == 1
+      throw (new Error "act: expected only one operator (#{ops}) for key #{k}") unless ops.length == 1
       destinations[k] = op: ops[0], value: v[ops[0]]
     else
       destinations[k] = op: '=', value: v
@@ -255,6 +255,8 @@ mapAnimatorFromName =
 
 class Task
   constructor: (@obj, @destination, options = {}) ->
+    for k, v of @destination
+      throw new Error('act: functions cannot be animated') if _.isFunction v
     if options.duration? and options.duration <= 0
       throw new Error 'act: duration must be positive'
     @duration = options.duration || 1
