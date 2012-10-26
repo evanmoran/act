@@ -17,12 +17,12 @@
         obj = obj._obj;
       }
       if (options.animator) {
-        task = new Task(obj, dest, options);
+        task = new Task(obj, dest, act, options);
         return scheduler.addTask(task);
       } else {
         _results = [];
         for (k in dest) {
-          task = new Task(obj, _.pick(dest, k), options);
+          task = new Task(obj, _.pick(dest, k), act, options);
           _results.push(scheduler.addTask(task));
         }
         return _results;
@@ -32,6 +32,9 @@
       v = Ease[k];
       act[k] = v;
     }
+    act.animator = function(name) {
+      return mapAnimatorFromName[name];
+    };
     _extendEventFunctions(act);
     act.clone = actGenerator;
     act.rate = 1;
@@ -232,10 +235,11 @@
 
   Task = (function() {
 
-    function Task(obj, destination, options) {
+    function Task(obj, destination, act, options) {
       var k, v, _ref;
       this.obj = obj;
       this.destination = destination;
+      this.act = act;
       if (options == null) {
         options = {};
       }
@@ -293,7 +297,7 @@
 
     Task.prototype._start = function() {
       var finalValue, initialValue, _base;
-      this._interpolator = this._animator(this.obj, this.destination);
+      this._interpolator = this._animator(this.obj, this.destination, this.act);
       finalValue = this._interpolator(1);
       initialValue = this._interpolator(0);
       if (typeof (_base = this.obj).actBefore === "function") {

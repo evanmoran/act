@@ -24,11 +24,11 @@ actGenerator = ->
       obj = obj._obj
 
     if options.animator
-      task = new Task obj, dest, options
+      task = new Task obj, dest, act, options
       scheduler.addTask task
     else
       for k of dest
-        task = new Task obj, (_.pick dest, k), options
+        task = new Task obj, (_.pick dest, k), act, options
         scheduler.addTask task
 
   # act.EaseLinear, etc.
@@ -36,6 +36,8 @@ actGenerator = ->
 
   for k, v of Ease
     act[k] = v
+
+  act.animator = (name) -> mapAnimatorFromName[name]
 
   # act.on, act.off, act.trigger
   # ---------------------------------------------------------------------
@@ -254,7 +256,7 @@ mapAnimatorFromName =
 # ---------------------------------------------------------------------
 
 class Task
-  constructor: (@obj, @destination, options = {}) ->
+  constructor: (@obj, @destination, @act, options = {}) ->
     for k, v of @destination
       throw new Error('act: functions cannot be animated') if _.isFunction v
     if options.duration? and options.duration <= 0
@@ -302,7 +304,7 @@ class Task
     @_elapsed = elapsed
 
   _start: ->
-    @_interpolator = @_animator @obj, @destination
+    @_interpolator = @_animator @obj, @destination, @act
 
     finalValue = @_interpolator 1
     initialValue = @_interpolator 0
