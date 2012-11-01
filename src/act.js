@@ -497,15 +497,20 @@
     }
 
     Scheduler.prototype.tick = function(dt) {
-      var task, _i, _len, _ref, _results;
+      var incompleteTasks, task, _i, _len, _ref;
       this._elapsed += dt * this.rate;
+      incompleteTasks = [];
       _ref = this._tasks;
-      _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         task = _ref[_i];
-        _results.push(task.update(this._elapsed));
+        task.update(this._elapsed);
+        if (task.startTime + task.duration >= this._elapsed) {
+          incompleteTasks.push(task);
+        } else {
+          console.log("Task complete.", task);
+        }
       }
-      return _results;
+      return this._tasks = incompleteTasks;
     };
 
     Scheduler.prototype.addTask = function(task) {

@@ -431,8 +431,15 @@ class Scheduler
 
   tick: (dt) ->
     @_elapsed += dt * @rate
+    incompleteTasks = []
     for task in @_tasks
       task.update @_elapsed
+      # Don't keep tasks that have ended
+      if task.startTime + task.duration >= @_elapsed
+        incompleteTasks.push task
+      else
+        console.log "Task complete.", task
+    @_tasks = incompleteTasks
 
   # Add
   addTask: (task) ->
