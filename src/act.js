@@ -46,6 +46,7 @@
     act._transactionBuilders = [];
     act.play = function() {
       var state, ticker;
+      act.forceRenderNextTick = true;
       if (!act._playState) {
         act._playState = state = {
           lastTick: _getTime()
@@ -58,7 +59,8 @@
             timeElapsed = timeCurrent - state.lastTick;
             changed = act._tick(timeElapsed * act.rate);
             state.lastTick = timeCurrent;
-            if (changed) {
+            if (changed || act.forceRenderNextTick) {
+              act.forceRenderNextTick = false;
               return act.trigger('render');
             }
           }
