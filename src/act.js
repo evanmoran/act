@@ -730,7 +730,7 @@
 
   act = actGenerator();
 
-  act.version = '0.0.5';
+  act.version = '0.0.6';
 
   module.exports = act;
 
