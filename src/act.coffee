@@ -13,6 +13,8 @@ _ = require 'underscore'
 # act.function
 # ---------------------------------------------------------------------
 
+_actInstanceID = 1
+
 actGenerator = ->
 
   # act.function
@@ -30,6 +32,10 @@ actGenerator = ->
       for k of dest
         task = new Task obj, (_.pick dest, k), act, options
         scheduler.addTask task
+
+  # For debugging, mark each instance if act with a unique ID
+  act.instanceID = _actInstanceID
+  _actInstanceID++
 
   # act.EaseLinear, etc.
   # ---------------------------------------------------------------------
