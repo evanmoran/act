@@ -47,14 +47,16 @@
           lastTick: _getTime()
         };
         ticker = function() {
-          var timeCurrent, timeElapsed;
+          var changed, timeCurrent, timeElapsed;
           if (act._playState === state) {
             _setTimeout(act.tickInterval, ticker);
             timeCurrent = _getTime();
             timeElapsed = timeCurrent - state.lastTick;
-            act._tick(timeElapsed * act.rate);
+            changed = act._tick(timeElapsed * act.rate);
             state.lastTick = timeCurrent;
-            return act.trigger('render');
+            if (changed) {
+              return act.trigger('render');
+            }
           }
         };
         return _setTimeout(act.tickInterval, ticker);
@@ -497,20 +499,20 @@
     }
 
     Scheduler.prototype.tick = function(dt) {
-      var incompleteTasks, task, _i, _len, _ref;
+      var changed, incompleteTasks, task, _i, _len, _ref;
       this._elapsed += dt * this.rate;
       incompleteTasks = [];
+      changed = this._tasks.length;
       _ref = this._tasks;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         task = _ref[_i];
         task.update(this._elapsed);
         if (task.startTime + task.duration >= this._elapsed) {
           incompleteTasks.push(task);
-        } else {
-          console.log("Task complete.", task);
         }
       }
-      return this._tasks = incompleteTasks;
+      this._tasks = incompleteTasks;
+      return changed;
     };
 
     Scheduler.prototype.addTask = function(task) {

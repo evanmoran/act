@@ -83,9 +83,10 @@ actGenerator = ->
           _setTimeout act.tickInterval, ticker
           timeCurrent = _getTime()
           timeElapsed = timeCurrent - state.lastTick
-          act._tick timeElapsed * act.rate
+          changed = act._tick timeElapsed * act.rate
           state.lastTick = timeCurrent
-          act.trigger 'render'
+          if changed
+            act.trigger 'render'
           # Continue tick
       # Start tick
       _setTimeout act.tickInterval, ticker
@@ -432,14 +433,14 @@ class Scheduler
   tick: (dt) ->
     @_elapsed += dt * @rate
     incompleteTasks = []
+    changed = @_tasks.length
     for task in @_tasks
       task.update @_elapsed
       # Don't keep tasks that have ended
       if task.startTime + task.duration >= @_elapsed
         incompleteTasks.push task
-      else
-        console.log "Task complete.", task
     @_tasks = incompleteTasks
+    changed
 
   # Add
   addTask: (task) ->
