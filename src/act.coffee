@@ -81,7 +81,7 @@ actGenerator = ->
   # ---------------------------------------------------------------------
 
   act.play = ->
-    act.forceRenderNextTick = true
+    act._forceRenderNextTick = true
     if not act._playState
       # Store reference to state to indentity specific start has been stopped
       act._playState = state = lastTick: _getTime()
@@ -95,8 +95,8 @@ actGenerator = ->
           changed = act._tick timeElapsed * act.rate
           state.lastTick = timeCurrent
           # If any task stepped, render
-          if changed or act.forceRenderNextTick
-            act.forceRenderNextTick = false
+          if changed or act._forceRenderNextTick
+            act._forceRenderNextTick = false
             act.trigger 'render'
       # Start tick
       _setTimeout act.tickInterval, ticker
@@ -143,6 +143,9 @@ actGenerator = ->
     builderTop = act._transactionBuilders.pop()
     scheduler = @_scheduler
     scheduler.addTask builderTop.transaction()
+
+  act.renderNextTick = ->
+    act._forceRenderNextTick = true
 
   # act.property
   # ---------------------------------------------------------------------

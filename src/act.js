@@ -46,7 +46,7 @@
     act._transactionBuilders = [];
     act.play = function() {
       var state, ticker;
-      act.forceRenderNextTick = true;
+      act._forceRenderNextTick = true;
       if (!act._playState) {
         act._playState = state = {
           lastTick: _getTime()
@@ -59,8 +59,8 @@
             timeElapsed = timeCurrent - state.lastTick;
             changed = act._tick(timeElapsed * act.rate);
             state.lastTick = timeCurrent;
-            if (changed || act.forceRenderNextTick) {
-              act.forceRenderNextTick = false;
+            if (changed || act._forceRenderNextTick) {
+              act._forceRenderNextTick = false;
               return act.trigger('render');
             }
           }
@@ -98,6 +98,9 @@
       builderTop = act._transactionBuilders.pop();
       scheduler = this._scheduler;
       return scheduler.addTask(builderTop.transaction());
+    };
+    act.renderNextTick = function() {
+      return act._forceRenderNextTick = true;
     };
     act.property = function(obj, key, val, options) {
       var setter, store;

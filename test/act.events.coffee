@@ -13,6 +13,7 @@ describe 'act.events', ->
     expect(act.trigger).to.be.a 'function'
 
   it 'on render called every tick', (done) ->
+    act.renderNextTick()
     stop = act.on 'render', ->
       stop()
       done()
